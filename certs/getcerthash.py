@@ -28,7 +28,7 @@ def main():
 
     fields = {
         "certificate_file": {"required": True, "type": "str"},
-        "state": {"required": True, "type": "str"}
+        "state": {"required": True, "type": "str"},
         "hash_algorithm": {"required": True, "type": "str"}
     }
 
