@@ -22,7 +22,7 @@ def getcerthash(data):
     certhash_str = sha_value.rstrip().replace(":","")
     result = {"fingerprint": certhash_str}
 
-    return False, True, result
+    return False, False, result
 
 def main():
 
