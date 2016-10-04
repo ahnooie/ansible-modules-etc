@@ -23,6 +23,7 @@ $params = Parse-Args $args;
 
 $result = New-Object PSObject;
 Set-Attr $result "changed" $false;
+Set-Attr $result "certhash";
 
 #pfx_file parameter
 $pfx_file = Get-AnsibleParam -obj $params -name "pfx_file" -failifempty $true -emptyattributefailmessage "Please provide the path to the pfx file as found on the target server";
@@ -34,30 +35,38 @@ $password = Get-AnsibleParam -obj $params -name "password" -failifempty $true -e
 $location = Get-AnsibleParam -obj $params -name "location" -default "CurrentUser" -ValidateSet "LocalMachine","CurrentUser";
 
 #store_name parameter
-$store_name = Get-AnsibleParam -obj $params -name "certififcate_store_name" -default "MY";
+$store_name = Get-AnsibleParam -obj $params -name "certificate_store_name" -default "MY";
 
 #state parameter
-$state = Get-AnsibleParam -obj $params -name "State" -default "Present" -ValidateSet "present","absent";
+$state = Get-AnsibleParam -obj $params -name "State" -default "present" -ValidateSet "present","absent";
 
 try 
 {
 	#Get list of certificates in the specified store
 	$store_path=Join-Path -Path cert: -ChildPath $location | Join-Path -Childpath $store_name
-	$thumbprints = Get-ChildItem -Path $store_path | Foreach-Object {$_.Thumbprint}
-	$pfx = new-object System.Security.Cryptography.X509Certificates.X509Certificate2	
-	$pfx.import($pfx_file,$password,"Exportable,PersistKeySet")	 
-	$store = new-object System.Security.Cryptography.X509Certificates.X509Store($store_name,$location)	 
-	$store.open("MaxAllowed")
+	$pfx_location = "Cert:\$location\$store_name" 
+	Set-Location $pfx_location
+	$thumbprints = Get-ChildItem | Foreach-Object {$_.Thumbprint}
+
+	$pfx_password = ConvertTo-SecureString -String $password -Force -AsPlainText
+	
+	$pfx = new-object System.Security.Cryptography.X509Certificates.X509Certificate2
+	$pfx.import($pfx_file,$password,"Exportable,PersistKeySet")	
+	$result.certhash = $pfx.Thumbprint
+
 	[bool]$certificateisinstalled = $thumbprints -contains $pfx.Thumbprint
 	if (($state -eq "present") -and !($certificateisinstalled)) {
-		$store.add($pfx)
+		Import-PfxCertificate -FilePath $pfx_file -CertStoreLocation $pfx_location -Exportable -Password $pfx_password
 		$result.changed = $true
 	}
 	elseif (($state -eq "absent") -and $certificateisinstalled){
+		$store = new-object System.Security.Cryptography.X509Certificates.X509Store($store_name,$location)	 
+		$store.open("MaxAllowed")
 		$store.remove($pfx)
 		$result.changed = $true
+		$store.close()
 	}
-	$store.close()
+
     Exit-Json $result
 }
 

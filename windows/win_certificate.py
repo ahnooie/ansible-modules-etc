@@ -73,7 +73,6 @@ EXAMPLES = '''
   win_certificate:
     pfx_file: 'C:\\tmp\\xzy.pfx'
     password: 'qwert123#'
-
   # Remove xzy.pfx from the LocalMachine\Remote Desktop certificate store
   win_certificate:
     pfx_file: 'C:\\tmp\\xzy.pfx'
