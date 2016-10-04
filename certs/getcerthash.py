@@ -15,25 +15,37 @@ import commands
 
 def getcerthash(data):
 
+    certificate_file = data['certificate_file']
+    certhash = subprocess.check_output("openssl x509 -in " + certificate_file + " -noout -sha1 -fingerprint",stderr=subprocess.STDOUT,shell=True)
+    sha_text,sha_value = certhash.split('=')
+    certhash_str = sha_value.rstrip().replace(":","")
+    result = {"fingerprint": certhash_str}
+
+
+    return False, True, result
+
 # do stuff
 
 def main():
 
     fields = {
-        "certificate_file": {"required": True, "type": "str"}
+        "certificate_file": {"required": True, "type": "str"},
+        "state": {"required": True, "type": "str"}
     }
 
-    certificate_file = data['certificate_file']
+    choice_map = { 
+        "present": getcerthash
+    }
 
-    fields = {"certificate_file": {"required": True, "type": "str"}}
+    module = AnsibleModule(argument_spec=fields)
+    is_error, has_changed, result = choice_map.get(
+        module.params['state'])(module.params)
 
-    certhash = subprocess.check_output("openssl x509 -in" + certificate_file + " -noout -sha1 -fingerprint",stderr=subprocess.STDOUT,shell=True)
-    sha_text,sha_value = certhash.split('=')
-    certhash_str = sha_value.rstrip().replace(":","")
+    if not is_error:
+        module.exit_json(changed=has_changed, meta=result)
+    else:
+        module.fail_json(msg="There was an error", meta=result)
 
-    module = AnsibleModule(argument_spec={})
-    response = {"hello": certhash_str}
-    module.exit_json(changed=True, meta=response)
 
 if __name__ == '__main__':
     main()
